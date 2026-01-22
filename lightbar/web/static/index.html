@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0">
+    <title>Jetson RGB Light Bar Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌈 Jetson RGB Light Bar</h1>
+            <p class="subtitle">System-Reactive Lighting Control</p>
+        </header>
+
+        <!-- System Metrics -->
+        <section class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">CPU Usage</div>
+                <div class="metric-value" id="cpu-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cpu-bar"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">RAM Usage</div>
+                <div class="metric-value" id="ram-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="ram-bar"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Temperature</div>
+                <div class="metric-value" id="temp-value">0°C</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="temp-bar"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">System Load</div>
+                <div class="metric-value" id="load-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="load-bar"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Effect Control -->
+        <section class="control-section">
+            <h2>Effect Mode</h2>
+            <div class="effect-grid">
+                <label class="effect-option">
+                    <input type="radio" name="effect" value="system_pulse" checked>
+                    <span class="effect-name">System Pulse</span>
+                    <span class="effect-desc">Breathing effect based on load</span>
+                </label>
+
+                <label class="effect-option">
+                    <input type="radio" name="effect" value="load_rainbow">
+                    <span class="effect-name">Load Rainbow</span>
+                    <span class="effect-desc">Rainbow cycle speed tied to CPU</span>
+                </label>
+
+                <label class="effect-option">
+                    <input type="radio" name="effect" value="random_sparkle">
+                    <span class="effect-name">Random Sparkle</span>
+                    <span class="effect-desc">Sparkles increase with activity</span>
+                </label>
+
+                <label class="effect-option">
+                    <input type="radio" name="effect" value="thermal_gradient">
+                    <span class="effect-name">Thermal Gradient</span>
+                    <span class="effect-desc">Color changes with temperature</span>
+                </label>
+
+                <label class="effect-option">
+                    <input type="radio" name="effect" value="load_bars">
+                    <span class="effect-name">Load Bars</span>
+                    <span class="effect-desc">CPU/RAM visualization</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- Brightness Control -->
+        <section class="control-section">
+            <h2>Brightness</h2>
+            <div class="slider-container">
+                <input type="range" id="brightness-slider" min="0" max="100" value="100" class="slider">
+                <span class="slider-value" id="brightness-display">100%</span>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="control-section">
+            <h2>Quick Actions</h2>
+            <div class="button-grid">
+                <button class="action-btn primary" id="toggle-btn">
+                    <span id="toggle-icon">💡</span>
+                    <span id="toggle-text">Turn Off</span>
+                </button>
+
+                <button class="action-btn secondary" id="demo-btn">
+                    🎨 Demo Mode
+                </button>
+
+                <button class="action-btn secondary" id="override-1h">
+                    ⏰ Override 1h
+                </button>
+
+                <button class="action-btn secondary" id="clear-override">
+                    🔄 Clear Override
+                </button>
+            </div>
+        </section>
+
+        <!-- Status Footer -->
+        <footer class="status-footer">
+            <div class="status-item">
+                <span class="status-label">Connection:</span>
+                <span class="status-indicator" id="connection-status">●</span>
+                <span id="connection-text">Connecting...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Current Effect:</span>
+                <span id="current-effect">system_pulse</span>
+            </div>
+        </footer>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+# Log files
+*.log
+logs/
+
+# Runtime state files
+state.json
+*.pid
+
+# Configuration files (use .example instead)
+config.json
+
+# Temporary files
+/tmp/
+*.tmp
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Backup files
+*.bak
+*.backup
+
+# Development files
+Prompts/
+.claude/

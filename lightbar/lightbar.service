@@ -1,0 +1,45 @@
+[Unit]
+Description=Jetson RGB Light Bar Controller
+Documentation=https://github.com/anthropics/claude-code
+After=network.target multi-user.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=<your-username>
+Group=<your-username>
+WorkingDirectory=/path/to/lightbar
+
+# Pre-start validation
+ExecStartPre=/path/to/lightbar/scripts/pre-start-checks.sh
+
+# Start controller
+ExecStart=/path/to/lightbar/scripts/start.sh
+
+# Graceful shutdown
+ExecStop=/path/to/lightbar/scripts/stop.sh
+
+# Restart policy
+Restart=always
+RestartSec=10s
+StartLimitBurst=5
+StartLimitIntervalSec=300s
+
+# Resource limits
+CPUQuota=5%
+MemoryLimit=100M
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lightbar
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

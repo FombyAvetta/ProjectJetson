@@ -1,0 +1,53 @@
+{
+  "i2c": {
+    "bus": 7,
+    "address": 14
+  },
+  "performance": {
+    "update_interval": 0.5,
+    "target_fps": 2
+  },
+  "effects": {
+    "default_effect": "system_pulse",
+    "available_effects": [
+      "system_pulse",
+      "load_rainbow",
+      "random_sparkle",
+      "thermal_gradient",
+      "load_bars"
+    ]
+  },
+  "display": {
+    "brightness": 100,
+    "brightness_multiplier": 1.0
+  },
+  "thresholds": {
+    "low_load": 30,
+    "medium_load": 60,
+    "high_load": 80
+  },
+  "schedule": {
+    "enabled": true,
+    "start_hour": 7,
+    "start_minute": 0,
+    "end_hour": 20,
+    "end_minute": 0,
+    "fade_in_duration": 3.0,
+    "fade_out_duration": 2.0
+  },
+  "oled_sync": {
+    "enabled": true,
+    "state_file": "/tmp/jetson_state.json",
+    "stale_timeout": 5.0
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "./logs/lightbar.log",
+    "max_size_mb": 10,
+    "backup_count": 3
+  },
+  "thermal": {
+    "sensor_path": "/sys/class/thermal/thermal_zone0/temp",
+    "critical_temp": 85
+  }
+}

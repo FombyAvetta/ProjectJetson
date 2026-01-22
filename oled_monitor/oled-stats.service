@@ -1,0 +1,17 @@
+[Unit]
+Description=OLED Stats Monitor for Jetson
+After=network.target
+
+[Service]
+Type=simple
+User=<your-username>
+Group=<your-username>
+WorkingDirectory=/path/to/oled_monitor
+ExecStart=/usr/bin/python3 /path/to/oled_monitor/oled_stats.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

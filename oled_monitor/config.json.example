@@ -1,0 +1,22 @@
+{
+    "refresh_rate": 1,
+    "i2c_bus": 7,
+    "screen_rotation_interval": 5,
+    "boot_splash_duration": 2,
+    "features": {
+        "show_gpu": true,
+        "show_temperature": true,
+        "show_network_speed": true,
+        "show_disk_usage": true,
+        "show_docker": true,
+        "rotate_screens": true,
+        "show_alerts": true,
+        "boot_splash": true
+    },
+    "alerts": {
+        "cpu_threshold": 90,
+        "memory_threshold": 85,
+        "temperature_threshold": 80,
+        "disk_threshold": 90
+    }
+}
