@@ -1,6 +1,9 @@
 # ProjectJetson
 
-A comprehensive system monitoring and visualization suite for NVIDIA Jetson devices, featuring an OLED stats display and reactive RGB light bar controller.
+A comprehensive system monitoring and visualization suite for NVIDIA Jetson Orin Nano, featuring an OLED stats display and reactive RGB light bar controller.
+
+## Noteworthy
+This was created using Claude Code
 
 ## Overview
 
