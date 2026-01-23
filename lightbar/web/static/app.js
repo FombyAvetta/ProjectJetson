@@ -3,6 +3,11 @@ let ws = null;
 let wsReconnectTimer = null;
 let isEnabled = true;
 let currentBrightness = 100;
+let scheduleConfig = {
+    enabled: true,
+    start_time: "07:00",
+    end_time: "20:00"
+};
 
 // ===== Toast Notifications =====
 function showToast(message, type = "info") {
@@ -239,7 +244,7 @@ function setupOverrideControls() {
             console.error("Failed to set override:", error);
         }
     });
-    
+
     // Clear override
     document.getElementById("clear-override").addEventListener("click", async () => {
         try {
@@ -251,28 +256,162 @@ function setupOverrideControls() {
     });
 }
 
+// ===== Schedule Configuration =====
+async function loadScheduleConfig() {
+    try {
+        const result = await apiCall("schedule", "GET");
+        scheduleConfig = result.data;
+
+        // Update UI
+        document.getElementById("schedule-enabled").checked = scheduleConfig.enabled;
+        document.getElementById("schedule-start").value = scheduleConfig.start_time;
+        document.getElementById("schedule-end").value = scheduleConfig.end_time;
+
+        updateScheduleStatus(scheduleConfig);
+    } catch (error) {
+        console.error("Failed to load schedule config:", error);
+    }
+}
+
+function updateScheduleStatus(config) {
+    const statusText = document.getElementById("schedule-status-text");
+    const statusContainer = document.getElementById("schedule-status");
+
+    if (config.enabled) {
+        const startFormatted = formatTime12Hour(config.start_time);
+        const endFormatted = formatTime12Hour(config.end_time);
+        statusText.textContent = `Active (${startFormatted} - ${endFormatted})`;
+        statusContainer.className = "schedule-status active";
+    } else {
+        statusText.textContent = "Disabled";
+        statusContainer.className = "schedule-status disabled";
+    }
+}
+
+function formatTime12Hour(time24) {
+    const [hourStr, minuteStr] = time24.split(":");
+    let hour = parseInt(hourStr);
+    const minute = minuteStr;
+    const ampm = hour >= 12 ? "PM" : "AM";
+
+    if (hour === 0) {
+        hour = 12;
+    } else if (hour > 12) {
+        hour -= 12;
+    }
+
+    return `${hour}:${minute} ${ampm}`;
+}
+
+function validateScheduleTimes(start, end) {
+    if (!start || !end) {
+        return { valid: false, message: "Both start and end times are required" };
+    }
+
+    if (start === end) {
+        return { valid: false, message: "Start and end times cannot be identical" };
+    }
+
+    return { valid: true, message: "" };
+}
+
+function showValidationMessage(message, type = "error") {
+    const validationDiv = document.getElementById("schedule-validation");
+    validationDiv.textContent = message;
+    validationDiv.className = `validation-message ${type}`;
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        validationDiv.className = "validation-message hidden";
+    }, 5000);
+}
+
+async function saveScheduleConfig() {
+    const enabled = document.getElementById("schedule-enabled").checked;
+    const startTime = document.getElementById("schedule-start").value;
+    const endTime = document.getElementById("schedule-end").value;
+
+    // Validate
+    const validation = validateScheduleTimes(startTime, endTime);
+    if (!validation.valid) {
+        showValidationMessage(validation.message, "error");
+        return;
+    }
+
+    try {
+        const result = await apiCall("schedule", "POST", {
+            enabled: enabled,
+            start_time: startTime,
+            end_time: endTime
+        });
+
+        scheduleConfig = result.data;
+        updateScheduleStatus(scheduleConfig);
+        showValidationMessage("Schedule saved successfully", "success");
+        showToast("Schedule updated", "success");
+    } catch (error) {
+        console.error("Failed to save schedule:", error);
+        showValidationMessage("Failed to save schedule", "error");
+    }
+}
+
+function setupScheduleControls() {
+    // Save button
+    document.getElementById("save-schedule-btn").addEventListener("click", saveScheduleConfig);
+
+    // Update status when toggle changes
+    document.getElementById("schedule-enabled").addEventListener("change", () => {
+        const enabled = document.getElementById("schedule-enabled").checked;
+        const config = {
+            enabled: enabled,
+            start_time: document.getElementById("schedule-start").value,
+            end_time: document.getElementById("schedule-end").value
+        };
+        updateScheduleStatus(config);
+    });
+
+    // Update status when times change
+    document.getElementById("schedule-start").addEventListener("change", () => {
+        const config = {
+            enabled: document.getElementById("schedule-enabled").checked,
+            start_time: document.getElementById("schedule-start").value,
+            end_time: document.getElementById("schedule-end").value
+        };
+        updateScheduleStatus(config);
+    });
+
+    document.getElementById("schedule-end").addEventListener("change", () => {
+        const config = {
+            enabled: document.getElementById("schedule-enabled").checked,
+            start_time: document.getElementById("schedule-start").value,
+            end_time: document.getElementById("schedule-end").value
+        };
+        updateScheduleStatus(config);
+    });
+}
+
 // ===== Initial Load =====
 async function loadInitialState() {
     try {
         const result = await apiCall("status");
         const state = result.data;
-        
+
         // Set effect radio button
         const effectInput = document.querySelector(`input[value="${state.effect}"]`);
         if (effectInput) {
             effectInput.checked = true;
         }
-        
+
         // Set brightness
         document.getElementById("brightness-slider").value = state.brightness;
         document.getElementById("brightness-display").textContent = `${state.brightness}%`;
         currentBrightness = state.brightness;
-        
+
         // Set toggle state
         isEnabled = state.enabled;
         const toggleIcon = document.getElementById("toggle-icon");
         const toggleText = document.getElementById("toggle-text");
-        
+
         if (isEnabled) {
             toggleIcon.textContent = "💡";
             toggleText.textContent = "Turn Off";
@@ -280,12 +419,15 @@ async function loadInitialState() {
             toggleIcon.textContent = "🌙";
             toggleText.textContent = "Turn On";
         }
-        
+
         // Update metrics if available
         if (state.metrics) {
             updateMetrics(state.metrics);
         }
-        
+
+        // Load schedule configuration
+        await loadScheduleConfig();
+
     } catch (error) {
         console.error("Failed to load initial state:", error);
         showToast("Failed to load initial state", "error");
@@ -295,20 +437,21 @@ async function loadInitialState() {
 // ===== Initialize =====
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Initializing Light Bar Control Panel...");
-    
+
     // Setup all controls
     setupEffectControls();
     setupBrightnessControl();
     setupToggleButton();
     setupDemoButton();
     setupOverrideControls();
-    
+    setupScheduleControls();
+
     // Load initial state
     loadInitialState();
-    
+
     // Connect WebSocket
     connectWebSocket();
-    
+
     console.log("✓ Initialization complete");
 });
 

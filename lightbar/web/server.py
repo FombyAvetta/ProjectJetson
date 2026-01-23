@@ -17,6 +17,7 @@ import psutil
 import time
 import threading
 import logging
+import re
 
 # Import controller components
 from scheduler import Scheduler
@@ -220,9 +221,62 @@ def api_demo_mode():
         # Signal controller to start demo mode
         update_control_state(demo_mode=True)
         logger.info("Demo mode triggered")
-        
+
         return jsonify({"success": True, "message": "Demo mode started"})
-    
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/schedule", methods=["GET"])
+def api_get_schedule():
+    """Get current schedule configuration."""
+    try:
+        config = scheduler.get_config()
+        return jsonify({
+            "success": True,
+            "data": config
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/schedule", methods=["POST"])
+def api_update_schedule():
+    """Update schedule configuration."""
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if "enabled" not in data:
+            return jsonify({"success": False, "error": "Missing 'enabled' field"}), 400
+        if "start_time" not in data:
+            return jsonify({"success": False, "error": "Missing 'start_time' field"}), 400
+        if "end_time" not in data:
+            return jsonify({"success": False, "error": "Missing 'end_time' field"}), 400
+
+        enabled = data["enabled"]
+        start_time = data["start_time"]
+        end_time = data["end_time"]
+
+        # Validate time format
+        time_pattern = re.compile(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$')
+        if not time_pattern.match(start_time):
+            return jsonify({"success": False, "error": "Invalid start_time format (use HH:MM)"}), 400
+        if not time_pattern.match(end_time):
+            return jsonify({"success": False, "error": "Invalid end_time format (use HH:MM)"}), 400
+
+        # Validate times not identical
+        if start_time == end_time:
+            return jsonify({"success": False, "error": "Start and end times cannot be identical"}), 400
+
+        # Update configuration
+        scheduler.update_config(enabled, start_time, end_time)
+        logger.info(f"Schedule updated: enabled={enabled}, {start_time} - {end_time}")
+
+        return jsonify({
+            "success": True,
+            "data": scheduler.get_config()
+        })
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

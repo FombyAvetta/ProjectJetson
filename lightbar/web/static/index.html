@@ -93,6 +93,41 @@
             </div>
         </section>
 
+        <!-- Daily Schedule -->
+        <section class="control-section">
+            <h2>Daily Schedule</h2>
+            <div class="schedule-config">
+                <div class="schedule-toggle-container">
+                    <span class="schedule-label">Enable Schedule</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="schedule-enabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="time-inputs-grid">
+                    <div class="time-input-wrapper">
+                        <label for="schedule-start">Start Time</label>
+                        <input type="time" id="schedule-start" class="time-input" value="07:00">
+                    </div>
+                    <div class="time-input-wrapper">
+                        <label for="schedule-end">End Time</label>
+                        <input type="time" id="schedule-end" class="time-input" value="20:00">
+                    </div>
+                </div>
+
+                <div class="schedule-status" id="schedule-status">
+                    <span id="schedule-status-text">Active (7:00 AM - 8:00 PM)</span>
+                </div>
+
+                <button class="action-btn primary" id="save-schedule-btn">
+                    💾 Save Schedule
+                </button>
+
+                <div id="schedule-validation" class="validation-message hidden"></div>
+            </div>
+        </section>
+
         <!-- Quick Actions -->
         <section class="control-section">
             <h2>Quick Actions</h2>

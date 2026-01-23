@@ -24,15 +24,18 @@ class ScheduleState(Enum):
 class Scheduler:
     """Manages automatic scheduling and manual overrides."""
     
-    def __init__(self, state_file: str = "state.json"):
+    def __init__(self, state_file: str = "state.json", config_file: str = "schedule_config.json"):
         """Initialize scheduler."""
         self.state_file = state_file
+        self.config_file = config_file
         self.state = self.load_state()
-        
-        # Default schedule: 7 AM to 8 PM
-        self.start_time = dtime(hour=7, minute=0)
-        self.end_time = dtime(hour=20, minute=0)
-        
+
+        # Load schedule configuration
+        config = self.load_config()
+        self.enabled = config.get("enabled", True)
+        self.start_time = self.parse_time(config.get("start_time", "07:00"))
+        self.end_time = self.parse_time(config.get("end_time", "20:00"))
+
         self.last_check = 0
         self.check_interval = 60  # Check every 60 seconds
         
@@ -58,17 +61,95 @@ class Scheduler:
         try:
             # Create directory if needed
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
-            
+
             # Write to temp file first
             temp_file = self.state_file + ".tmp"
             with open(temp_file, "w") as f:
                 json.dump(self.state, f, indent=2)
-            
+
             # Atomic rename
             os.replace(temp_file, self.state_file)
         except Exception as e:
             print(f"Error saving state: {e}")
-    
+
+    def load_config(self) -> Dict[str, Any]:
+        """Load schedule configuration from file."""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file) as f:
+                    return json.load(f)
+        except Exception:
+            pass
+
+        # Default configuration
+        return {
+            "enabled": True,
+            "start_time": "07:00",
+            "end_time": "20:00"
+        }
+
+    def save_config(self, config: Dict[str, Any]):
+        """Save schedule configuration to file (atomic write)."""
+        try:
+            # Create directory if needed
+            dir_path = os.path.dirname(self.config_file)
+            if dir_path:
+                os.makedirs(dir_path, exist_ok=True)
+
+            # Write to temp file first
+            temp_file = self.config_file + ".tmp"
+            with open(temp_file, "w") as f:
+                json.dump(config, f, indent=2)
+
+            # Atomic rename
+            os.replace(temp_file, self.config_file)
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
+    def parse_time(self, time_str: str) -> dtime:
+        """Parse time string in HH:MM format to datetime.time object."""
+        try:
+            parts = time_str.split(":")
+            hour = int(parts[0])
+            minute = int(parts[1])
+            return dtime(hour=hour, minute=minute)
+        except Exception:
+            # Fallback to 7 AM if parsing fails
+            return dtime(hour=7, minute=0)
+
+    def get_config(self) -> Dict[str, Any]:
+        """Get current schedule configuration."""
+        return {
+            "enabled": self.enabled,
+            "start_time": f"{self.start_time.hour:02d}:{self.start_time.minute:02d}",
+            "end_time": f"{self.end_time.hour:02d}:{self.end_time.minute:02d}"
+        }
+
+    def update_config(self, enabled: bool, start_time: str, end_time: str):
+        """
+        Update schedule configuration.
+
+        Args:
+            enabled: Whether schedule is enabled
+            start_time: Start time in HH:MM format
+            end_time: End time in HH:MM format
+        """
+        # Update instance variables
+        self.enabled = enabled
+        self.start_time = self.parse_time(start_time)
+        self.end_time = self.parse_time(end_time)
+
+        # Save to file
+        config = {
+            "enabled": enabled,
+            "start_time": start_time,
+            "end_time": end_time
+        }
+        self.save_config(config)
+
+        # Force immediate re-evaluation
+        self.last_check = 0
+
     def get_current_time(self) -> dtime:
         """Get current time."""
         now = datetime.now()
@@ -99,20 +180,24 @@ class Scheduler:
         """
         Determine if lights should currently be on.
         Considers schedule and manual overrides.
-        
+
         Returns:
             True if lights should be on
         """
+        # If schedule is disabled, lights stay on 24/7
+        if not self.enabled:
+            return True
+
         now = time.time()
         current_time = self.get_current_time()
-        
+
         # Check if override is active
         override_until = self.state.get("override_until")
         if override_until and now < override_until:
             # Override is active
             state = ScheduleState(self.state.get("schedule_state", ScheduleState.OFF.value))
             return state in [ScheduleState.OVERRIDE_ON, ScheduleState.ON]
-        
+
         # Check regular schedule
         return self.is_within_schedule(current_time)
     
@@ -209,10 +294,14 @@ class Scheduler:
     def get_boot_behavior(self) -> str:
         """
         Determine what to do on system boot.
-        
+
         Returns:
             "fade_in" if lights should start, "stay_off" if outside schedule
         """
+        # If schedule is disabled, always fade in
+        if not self.enabled:
+            return "fade_in"
+
         if self.should_lights_be_on():
             return "fade_in"
         else:
