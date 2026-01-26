@@ -370,7 +370,11 @@ class LightBarController:
         try:
             from shared_state import read_control_state, update_control_state
             control = read_control_state()
-            
+
+            # Check if scheduler says lights should be off (respect schedule over web commands)
+            schedule_says_off = (self.scheduler.enabled and
+                                 not self.scheduler.should_lights_be_on())
+
             # Apply enable/disable FIRST
             enabled = control.get("enabled", True)
             if not enabled:
@@ -379,15 +383,19 @@ class LightBarController:
                     self.brightness_multiplier = 0
                     self.bot.turn_off()
                     self.logger.info("Lights disabled via web interface")
+            elif schedule_says_off:
+                # Schedule says off - don't let web commands override
+                # (User can use override button to temporarily enable)
+                pass
             else:
-                # Only apply changes if enabled
-                
+                # Only apply changes if enabled and schedule allows
+
                 # Apply effect change
                 if control.get("effect") != self.current_effect_name:
                     new_effect = control["effect"]
                     if new_effect in self.config["effects"]["available_effects"]:
                         self.set_effect(new_effect)
-                
+
                 # Apply brightness change (only when enabled and not fading)
                 if not self.fade_controller.is_fading():
                     new_brightness = control.get("brightness", 100) / 100.0
@@ -398,12 +406,12 @@ class LightBarController:
                         else:
                             self.logger.info(f"Brightness changed to {int(new_brightness * 100)}%")
                         self.brightness_multiplier = new_brightness
-            
+
             # Check demo mode
             if control.get("demo_mode", False):
                 update_control_state(demo_mode=False)  # Clear flag
                 self.start_demo_mode()
-                
+
         except Exception as e:
             self.logger.error(f"Error checking control commands: {e}")
     
@@ -440,6 +448,10 @@ class LightBarController:
                 fade_brightness = self.fade_controller.update()
                 if fade_brightness is not None:
                     self.brightness_multiplier = fade_brightness
+                    # Explicitly turn off LEDs when fade completes to 0
+                    if fade_brightness <= 0:
+                        self.bot.turn_off()
+                        self.logger.info("Fade complete - LEDs turned off")
 
                 # Check web control commands
                 if loop_start - self.last_control_check > self.control_check_interval:
