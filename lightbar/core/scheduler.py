@@ -23,11 +23,35 @@ class ScheduleState(Enum):
 
 class Scheduler:
     """Manages automatic scheduling and manual overrides."""
-    
-    def __init__(self, state_file: str = "state.json", config_file: str = "schedule_config.json"):
-        """Initialize scheduler."""
-        self.state_file = state_file
-        self.config_file = config_file
+
+    def __init__(self, state_file: str = None, config_file: str = None):
+        """Initialize scheduler.
+
+        Args:
+            state_file: Path to state file (default: lightbar/state.json)
+            config_file: Path to config file (default: lightbar/schedule_config.json)
+        """
+        # Find the lightbar root directory
+        # Works whether scheduler.py is at lightbar/scheduler.py or lightbar/core/scheduler.py
+        this_file = Path(__file__).resolve()
+        this_dir = this_file.parent
+
+        # Check if we're in a 'core' subdirectory
+        if this_dir.name == "core":
+            lightbar_dir = this_dir.parent
+        else:
+            lightbar_dir = this_dir
+
+        if state_file is None:
+            self.state_file = str(lightbar_dir / "state.json")
+        else:
+            self.state_file = state_file
+
+        if config_file is None:
+            self.config_file = str(lightbar_dir / "schedule_config.json")
+        else:
+            self.config_file = config_file
+
         self.state = self.load_state()
 
         # Load schedule configuration
@@ -35,6 +59,9 @@ class Scheduler:
         self.enabled = config.get("enabled", True)
         self.start_time = self.parse_time(config.get("start_time", "07:00"))
         self.end_time = self.parse_time(config.get("end_time", "20:00"))
+
+        # Track config file modification time for hot-reload
+        self.config_mtime = self._get_config_mtime()
 
         self.last_check = 0
         self.check_interval = 60  # Check every 60 seconds
@@ -71,6 +98,38 @@ class Scheduler:
             os.replace(temp_file, self.state_file)
         except Exception as e:
             print(f"Error saving state: {e}")
+
+    def _get_config_mtime(self) -> float:
+        """Get config file modification time."""
+        try:
+            if os.path.exists(self.config_file):
+                return os.path.getmtime(self.config_file)
+        except Exception:
+            pass
+        return 0.0
+
+    def reload_config_if_changed(self) -> bool:
+        """Check if config file changed and reload if so. Returns True if reloaded."""
+        current_mtime = self._get_config_mtime()
+        if current_mtime > self.config_mtime:
+            config = self.load_config()
+            old_enabled = self.enabled
+            old_start = self.start_time
+            old_end = self.end_time
+
+            self.enabled = config.get("enabled", True)
+            self.start_time = self.parse_time(config.get("start_time", "07:00"))
+            self.end_time = self.parse_time(config.get("end_time", "20:00"))
+            self.config_mtime = current_mtime
+
+            # Log if anything changed
+            if (old_enabled != self.enabled or old_start != self.start_time
+                    or old_end != self.end_time):
+                print(f"Schedule config reloaded: enabled={self.enabled}, "
+                      f"{self.start_time.hour:02d}:{self.start_time.minute:02d} - "
+                      f"{self.end_time.hour:02d}:{self.end_time.minute:02d}")
+                return True
+        return False
 
     def load_config(self) -> Dict[str, Any]:
         """Load schedule configuration from file."""
@@ -254,18 +313,21 @@ class Scheduler:
         """
         Update scheduler state.
         Should be called periodically from main loop.
-        
+
         Returns:
             Action to take: "fade_in", "fade_out", "turn_on", "turn_off", or None
         """
         now = time.time()
-        
+
         # Only check once per interval
         if now - self.last_check < self.check_interval:
             return None
-        
+
         self.last_check = now
-        
+
+        # Check for config file changes (hot-reload from web interface)
+        self.reload_config_if_changed()
+
         # Check if override expired
         override_until = self.state.get("override_until")
         if override_until and now >= override_until:
