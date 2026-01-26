@@ -388,15 +388,16 @@ class LightBarController:
                     if new_effect in self.config["effects"]["available_effects"]:
                         self.set_effect(new_effect)
                 
-                # Apply brightness change (only when enabled)
-                new_brightness = control.get("brightness", 100) / 100.0
-                if abs(new_brightness - self.brightness_multiplier) > 0.01:
-                    # If currently at 0 (was disabled), restore brightness
-                    if self.brightness_multiplier == 0:
-                        self.logger.info(f"Lights enabled via web interface at {int(new_brightness * 100)}%")
-                    else:
-                        self.logger.info(f"Brightness changed to {int(new_brightness * 100)}%")
-                    self.brightness_multiplier = new_brightness
+                # Apply brightness change (only when enabled and not fading)
+                if not self.fade_controller.is_fading():
+                    new_brightness = control.get("brightness", 100) / 100.0
+                    if abs(new_brightness - self.brightness_multiplier) > 0.01:
+                        # If currently at 0 (was disabled), restore brightness
+                        if self.brightness_multiplier == 0:
+                            self.logger.info(f"Lights enabled via web interface at {int(new_brightness * 100)}%")
+                        else:
+                            self.logger.info(f"Brightness changed to {int(new_brightness * 100)}%")
+                        self.brightness_multiplier = new_brightness
             
             # Check demo mode
             if control.get("demo_mode", False):
@@ -434,7 +435,12 @@ class LightBarController:
                 elif action == "fade_out":
                     self.logger.info("Starting fade out (2 seconds)")
                     self.fade_controller.start_fade(1.0, 0.0, 2.0)
-                
+
+                # Update fade controller and apply brightness
+                fade_brightness = self.fade_controller.update()
+                if fade_brightness is not None:
+                    self.brightness_multiplier = fade_brightness
+
                 # Check web control commands
                 if loop_start - self.last_control_check > self.control_check_interval:
                     self.check_control_commands()
